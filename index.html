@@ -52,68 +52,68 @@
 
   <!-- Supabase -->
   <script>
-    const supabaseUrl = 'https://qiybdrzxcxxgvibuaruu.supabase.co';
-    const supabaseKey = 'sbp_57327960ba3e8131728df4ebbedf739918a428b7'; // Replace this with your actual anon/public key
-    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+  const supabaseUrl = 'https://qiybdrzxcxxgvibuaruu.supabase.co';
+  const supabaseKey = 'sbp_57327960ba3e8131728df4ebbedf739918a428b7'; // anon/public key
+  const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey); // ✅ 이름 바꿈
 
-    const chatBox = document.getElementById('chat');
-    const senderInput = document.getElementById('sender');
-    const messageInput = document.getElementById('messageInput');
+  const chatBox = document.getElementById('chat');
+  const senderInput = document.getElementById('sender');
+  const messageInput = document.getElementById('messageInput');
 
-    async function sendMessage() {
-      const sender = senderInput.value;
-      const content = messageInput.value.trim();
-      if (!content) return;
+  async function sendMessage() {
+    const sender = senderInput.value;
+    const content = messageInput.value.trim();
+    if (!content) return;
 
-      const { error } = await supabase
-        .from('messages')
-        .insert([{ sender, content }]);
+    const { error } = await supabaseClient // ✅ 이름 바꿈
+      .from('messages')
+      .insert([{ sender, content }]);
 
-      if (error) {
-        alert('메시지 전송 실패: ' + error.message);
-      } else {
-        messageInput.value = '';
-      }
+    if (error) {
+      alert('메시지 전송 실패: ' + error.message);
+    } else {
+      messageInput.value = '';
+    }
+  }
+
+  function displayMessage(message) {
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'msg ' + (message.sender === '찬영' ? 'chanyoung' : 'bohyun');
+    msgDiv.textContent = `[${message.sender}] ${message.content}`;
+    chatBox.appendChild(msgDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  function listenForMessages() {
+    supabaseClient // ✅ 이름 바꿈
+      .channel('chat-room')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+      }, (payload) => {
+        displayMessage(payload.new);
+      })
+      .subscribe();
+  }
+
+  async function loadMessages() {
+    const { data, error } = await supabaseClient // ✅ 이름 바꿈
+      .from('messages')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      alert('메시지를 불러올 수 없습니다: ' + error.message);
+      return;
     }
 
-    function displayMessage(message) {
-      const msgDiv = document.createElement('div');
-      msgDiv.className = 'msg ' + (message.sender === '찬영' ? 'chanyoung' : 'bohyun');
-      msgDiv.textContent = `[${message.sender}] ${message.content}`;
-      chatBox.appendChild(msgDiv);
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
+    data.forEach(displayMessage);
+  }
 
-    function listenForMessages() {
-      supabase
-        .channel('chat-room')
-        .on('postgres_changes', {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-        }, (payload) => {
-          displayMessage(payload.new);
-        })
-        .subscribe();
-    }
+  loadMessages();
+  listenForMessages();
+</script>
 
-    async function loadMessages() {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        alert('메시지를 불러올 수 없습니다: ' + error.message);
-        return;
-      }
-
-      data.forEach(displayMessage);
-    }
-
-    // Init
-    loadMessages();
-    listenForMessages();
-  </script>
 </body>
 </html>
