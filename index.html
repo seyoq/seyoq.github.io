@@ -9,7 +9,6 @@
     * {
       box-sizing: border-box;
     }
-
     body {
       font-family: 'Segoe UI', sans-serif;
       background: #fff0f6;
@@ -17,13 +16,11 @@
       margin: auto;
       padding: 20px;
     }
-
     h1 {
       text-align: center;
       color: #d6336c;
       margin-bottom: 10px;
     }
-
     #chat {
       border: 1px solid #ddd;
       background: #fff;
@@ -34,7 +31,6 @@
       box-shadow: 0 2px 4px rgba(0,0,0,0.05);
       margin-bottom: 15px;
     }
-
     .msg {
       margin: 10px 0;
       padding: 10px 15px;
@@ -44,48 +40,40 @@
       display: inline-block;
       clear: both;
     }
-
     .msg.oscar {
       background: #d0ebff;
       color: #084b8a;
       float: left;
     }
-
     .msg.alice {
       background: #ffd6e8;
       color: #a61e4d;
       float: right;
     }
-
     form {
       display: flex;
       flex-direction: column;
       gap: 8px;
     }
-
     select, input, button {
       padding: 12px;
       border-radius: 8px;
       border: 1px solid #ccc;
       font-size: 16px;
     }
-
     button {
       background: #d6336c;
       color: white;
       cursor: pointer;
       transition: background 0.2s;
     }
-
     button:hover {
       background: #a61e4d;
     }
-
     @media (max-width: 600px) {
       #chat {
         height: 300px;
       }
-
       .msg {
         max-width: 100%;
       }
@@ -110,12 +98,35 @@
 
   <script>
     const supabaseUrl = 'https://qiybdrzxcxxgvibuaruu.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpeWJkcnp4Y3h4Z3ZpYnVhcnV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIzNTk4NTcsImV4cCI6MjA2NzkzNTg1N30.3qJ9t3VQ-FIElslsu0R5up4EbHMJJLXJh_1TxZqeflI';
+    const supabaseKey = 'YOUR_ANON_KEY'; // 👈 실제 anon 키로 교체
     const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
     const chatBox = document.getElementById('chat');
     const senderInput = document.getElementById('sender');
     const messageInput = document.getElementById('messageInput');
+
+    // 알림 권한 요청
+    async function requestNotificationPermission() {
+      if (!('Notification' in window)) {
+        alert('이 브라우저는 알림을 지원하지 않습니다.');
+        return;
+      }
+
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        alert('알림이 꺼져 있어요. 설정에서 허용해주세요.');
+      }
+    }
+
+    // 알림 표시
+    function displayBrowserNotification(message) {
+      if (Notification.permission === 'granted') {
+        new Notification(`📩 ${message.sender}`, {
+          body: message.content,
+          icon: 'https://cdn-icons-png.flaticon.com/512/2583/2583279.png',
+        });
+      }
+    }
 
     async function sendMessage() {
       const sender = senderInput.value;
@@ -164,13 +175,21 @@
           table: 'messages',
         }, (payload) => {
           displayMessage(payload.new);
+
+          const currentUser = senderInput.value;
+          if (payload.new.sender !== currentUser) {
+            displayBrowserNotification(payload.new);
+          }
         })
         .subscribe();
     }
 
-    loadMessages();
-    listenForMessages();
+    // 초기 실행
+    window.onload = () => {
+      requestNotificationPermission();
+      loadMessages();
+      listenForMessages();
+    };
   </script>
-
 </body>
 </html>
