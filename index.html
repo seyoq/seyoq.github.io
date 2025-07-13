@@ -1,123 +1,118 @@
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <title>둘만의 챗</title>
+  <meta charset="UTF-8" />
+  <title>Secret Chat - 찬영 ❤️ 보현</title>
   <style>
-    body { font-family: sans-serif; background: #1c1c1c; color: #fff; padding: 20px; }
-    textarea, input { width: 100%; margin: 5px 0; padding: 8px; border-radius: 5px; border: none; }
-    textarea { height: 100px; }
-    button { padding: 10px; margin-top: 5px; cursor: pointer; border: none; border-radius: 5px; font-weight: bold; }
-    .section { margin: 20px 0; padding: 15px; background: #2a2a2a; border-radius: 10px; }
-    .highlight { background: #333; padding: 5px; border-radius: 5px; margin-top: 5px; }
-    .log { background: #000; padding: 10px; border-radius: 5px; font-family: monospace; height: 100px; overflow-y: auto; font-size: 0.9em; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #fefefe;
+      max-width: 500px;
+      margin: auto;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    #chat {
+      border: 1px solid #ccc;
+      height: 300px;
+      overflow-y: scroll;
+      padding: 10px;
+      background: #f9f9f9;
+      margin-bottom: 10px;
+    }
+    .msg {
+      margin: 5px 0;
+    }
+    .msg.chanyoung { color: blue; }
+    .msg.bohyun { color: purple; }
+    input, select, button {
+      padding: 8px;
+      margin: 5px 0;
+      width: 100%;
+    }
   </style>
 </head>
 <body>
 
-<h1>🧩 둘만의 비밀챗</h1>
+  <h1>Secret Chat 💌</h1>
 
-<div class="section">
-  <h2>1️⃣ 1번 친구: 연결 코드 생성</h2>
-  <button onclick="createOffer()">🎯 연결 코드 만들기</button>
-  <textarea id="offerOutput" placeholder="생성된 Offer 표시" readonly></textarea>
-  <button onclick="copyText('offerOutput')">📋 복사</button>
-</div>
+  <div id="chat"></div>
 
-<div class="section">
-  <h2>2️⃣ 2번 친구: 상대 Offer 붙여넣고 응답 생성</h2>
-  <textarea id="offerInput" placeholder="여기에 1번 친구의 Offer 붙여넣기"></textarea>
-  <button onclick="createAnswer()">⚙️ 응답 생성</button>
-  <textarea id="answerOutput" placeholder="생성된 Answer 표시" readonly></textarea>
-  <button onclick="copyText('answerOutput')">📋 복사</button>
-</div>
+  <select id="sender">
+    <option value="찬영">Oscar</option>
+    <option value="보현">Alice</option>
+  </select>
 
-<div class="section">
-  <h2>3️⃣ 1번 친구: 상대방 응답 붙여넣기</h2>
-  <textarea id="answerInput" placeholder="여기에 Answer 붙여넣기"></textarea>
-  <button onclick="applyAnswer()">✅ 연결 완료하기</button>
-</div>
+  <input type="text" id="messageInput" placeholder="메시지를 입력하세요" />
+  <button onclick="sendMessage()">보내기</button>
 
-<div class="section">
-  <h2>💬 메시지 주고받기</h2>
-  <input id="messageInput" placeholder="메시지 입력" />
-  <button onclick="sendMessage()">📨 전송</button>
-  <div class="log" id="log">📝 로그 출력</div>
-</div>
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script>
+    const supabaseUrl = 'https://qiybdrzxcxxgvibuaruu.supabase.co';
+    const supabaseKey = 'sbp_57327960ba3e8131728df4ebbedf739918a428b7'; // Replace this with your actual anon/public key
+    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-<script>
-let pc, channel;
+    const chatBox = document.getElementById('chat');
+    const senderInput = document.getElementById('sender');
+    const messageInput = document.getElementById('messageInput');
 
-const servers = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+    async function sendMessage() {
+      const sender = senderInput.value;
+      const content = messageInput.value.trim();
+      if (!content) return;
 
-function log(message) {
-  const el = document.createElement("div");
-  el.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-  document.getElementById("log").appendChild(el);
-  document.getElementById("log").scrollTop = document.getElementById("log").scrollHeight;
-}
+      const { error } = await supabase
+        .from('messages')
+        .insert([{ sender, content }]);
 
-function copyText(id) {
-  navigator.clipboard.writeText(document.getElementById(id).value);
-  log("📋 복사됨: " + id);
-}
-
-function setupPC(isOfferer) {
-  pc = new RTCPeerConnection(servers);
-
-  if (isOfferer) {
-    channel = pc.createDataChannel("chat");
-    channel.onopen = () => log("✅ 채널 열림");
-    channel.onmessage = e => log("📩 받은 메시지: " + e.data);
-  } else {
-    pc.ondatachannel = (e) => {
-      channel = e.channel;
-      channel.onopen = () => log("✅ 채널 열림");
-      channel.onmessage = e => log("📩 받은 메시지: " + e.data);
-    };
-  }
-
-  pc.onicecandidate = () => {
-    if (pc.iceGatheringState === "complete") {
-      const desc = JSON.stringify(pc.localDescription);
-      if (isOfferer) document.getElementById("offerOutput").value = desc;
-      else document.getElementById("answerOutput").value = desc;
+      if (error) {
+        alert('메시지 전송 실패: ' + error.message);
+      } else {
+        messageInput.value = '';
+      }
     }
-  };
-}
 
-async function createOffer() {
-  setupPC(true);
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-  log("🛠️ Offer 생성");
-}
+    function displayMessage(message) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'msg ' + (message.sender === '찬영' ? 'chanyoung' : 'bohyun');
+      msgDiv.textContent = `[${message.sender}] ${message.content}`;
+      chatBox.appendChild(msgDiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
 
-async function createAnswer() {
-  setupPC(false);
-  const offer = JSON.parse(document.getElementById("offerInput").value);
-  await pc.setRemoteDescription(offer);
-  const answer = await pc.createAnswer();
-  await pc.setLocalDescription(answer);
-  log("🛠️ Answer 생성");
-}
+    function listenForMessages() {
+      supabase
+        .channel('chat-room')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+        }, (payload) => {
+          displayMessage(payload.new);
+        })
+        .subscribe();
+    }
 
-async function applyAnswer() {
-  const answer = JSON.parse(document.getElementById("answerInput").value);
-  await pc.setRemoteDescription(answer);
-  log("🔗 연결 완료!");
-}
+    async function loadMessages() {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .order('created_at', { ascending: true });
 
-function sendMessage() {
-  const msg = document.getElementById("messageInput").value;
-  if (channel?.readyState === "open") {
-    channel.send(msg);
-    log("📤 전송: " + msg);
-  } else {
-    log("❌ 채널이 열려있지 않습니다.");
-  }
-}
-</script>
+      if (error) {
+        alert('메시지를 불러올 수 없습니다: ' + error.message);
+        return;
+      }
+
+      data.forEach(displayMessage);
+    }
+
+    // Init
+    loadMessages();
+    listenForMessages();
+  </script>
 </body>
 </html>
