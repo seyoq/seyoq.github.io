@@ -4,15 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Oscar ❤️ Alice</title>
-  
-  <!-- 🧩 PWA 설정 -->
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icon.png" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#fff0f6" />
 
   <script>
-    // 📦 Service worker 등록
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('service-worker.js')
         .then(() => console.log('✅ Service Worker 등록됨'))
@@ -34,7 +31,6 @@
     h1 {
       text-align: center;
       color: #d6336c;
-      margin-bottom: 10px;
     }
     #chat {
       border: 1px solid #ddd;
@@ -46,24 +42,38 @@
       box-shadow: 0 2px 4px rgba(0,0,0,0.05);
       margin-bottom: 15px;
     }
+    .msg-wrapper {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+    .msg-wrapper.oscar {
+      flex-direction: row;
+    }
+    .msg-wrapper.alice {
+      flex-direction: row-reverse;
+    }
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin: 0 8px;
+    }
     .msg {
-      margin: 10px 0;
       padding: 10px 15px;
       border-radius: 20px;
       max-width: 80%;
       word-wrap: break-word;
-      display: inline-block;
-      clear: both;
+      background: #f1f3f5;
     }
     .msg.oscar {
       background: #d0ebff;
       color: #084b8a;
-      float: left;
     }
     .msg.alice {
       background: #ffd6e8;
       color: #a61e4d;
-      float: right;
     }
     form {
       display: flex;
@@ -85,14 +95,6 @@
     button:hover {
       background: #a61e4d;
     }
-    @media (max-width: 600px) {
-      #chat {
-        height: 300px;
-      }
-      .msg {
-        max-width: 100%;
-      }
-    }
   </style>
 </head>
 <body>
@@ -106,39 +108,34 @@
       <option value="oscar">Oscar</option>
       <option value="alice">Alice</option>
     </select>
-
     <input type="text" id="messageInput" placeholder="메시지를 입력하세요..." autocomplete="off" />
     <button type="submit">보내기</button>
   </form>
 
   <script>
     const supabaseUrl = 'https://qiybdrzxcxxgvibuaruu.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpeWJkcnp4Y3h4Z3ZpYnVhcnV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIzNTk4NTcsImV4cCI6MjA2NzkzNTg1N30.3qJ9t3VQ-FIElslsu0R5up4EbHMJJLXJh_1TxZqeflI'; // 👈 실제 anon 키로 교체
+    const supabaseKey = 'YOUR_SUPABASE_ANON_KEY'; // 실서비스에서는 외부 노출 금지
     const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
     const chatBox = document.getElementById('chat');
     const senderInput = document.getElementById('sender');
     const messageInput = document.getElementById('messageInput');
 
-    // 알림 권한 요청
-    async function requestNotificationPermission() {
-      if (!('Notification' in window)) {
-        alert('이 브라우저는 알림을 지원하지 않습니다.');
-        return;
-      }
+    const avatarMap = {
+      oscar: '찬영.jpg',
+      alice: '보현.jpg',
+    };
 
+    async function requestNotificationPermission() {
+      if (!('Notification' in window)) return;
       const permission = await Notification.requestPermission();
-      if (permission !== 'granted') {
-        alert('알림이 꺼져 있어요. 설정에서 허용해주세요.');
-      }
     }
 
-    // 알림 표시
     function displayBrowserNotification(message) {
       if (Notification.permission === 'granted') {
         new Notification(`📩 ${message.sender}`, {
           body: message.content,
-          icon: 'https://cdn-icons-png.flaticon.com/512/2583/2583279.png',
+          icon: avatarMap[message.sender.toLowerCase()] || '',
         });
       }
     }
@@ -160,10 +157,21 @@
     }
 
     function displayMessage(message) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'msg-wrapper ' + message.sender.toLowerCase();
+
+      const avatar = document.createElement('img');
+      avatar.src = avatarMap[message.sender.toLowerCase()] || '';
+      avatar.alt = message.sender;
+      avatar.className = 'avatar';
+
       const msgDiv = document.createElement('div');
       msgDiv.className = 'msg ' + message.sender.toLowerCase();
-      msgDiv.textContent = `[${message.sender}] ${message.content}`;
-      chatBox.appendChild(msgDiv);
+      msgDiv.textContent = message.content;
+
+      wrapper.appendChild(avatar);
+      wrapper.appendChild(msgDiv);
+      chatBox.appendChild(wrapper);
       chatBox.scrollTop = chatBox.scrollHeight;
     }
 
@@ -199,7 +207,6 @@
         .subscribe();
     }
 
-    // 초기 실행
     window.onload = () => {
       requestNotificationPermission();
       loadMessages();
