@@ -2,15 +2,24 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Oscar ❤️ Alice</title>
   
-  <!-- PWA 및 스타일은 기존과 동일 -->
+  <!-- 🧩 PWA 설정 -->
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icon.png" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#fff0f6" />
 
+  <script>
+    // 📦 Service worker 등록
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js')
+        .then(() => console.log('✅ Service Worker 등록됨'))
+        .catch(err => console.error('SW 등록 실패', err));
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -37,52 +46,31 @@
       box-shadow: 0 2px 4px rgba(0,0,0,0.05);
       margin-bottom: 15px;
     }
-    .msg-wrapper {
-      display: flex;
-      align-items: flex-start;
-      margin-bottom: 12px;
-    }
-    .msg-wrapper.oscar {
-      flex-direction: row;
-    }
-    .msg-wrapper.alice {
-      flex-direction: row-reverse;
-    }
-    .avatar {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      margin: 0 8px;
-      object-fit: cover;
-      flex-shrink: 0;
-    }
     .msg {
-      margin: 0;
+      margin: 10px 0;
       padding: 10px 15px;
       border-radius: 20px;
       max-width: 80%;
       word-wrap: break-word;
+      display: inline-block;
+      clear: both;
+    }
+    .msg.oscar {
       background: #d0ebff;
       color: #084b8a;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      float: left;
     }
     .msg.alice {
       background: #ffd6e8;
       color: #a61e4d;
-    }
-    .msg img {
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-      max-width: 200px;
-      display: block;
-      margin-top: 8px;
+      float: right;
     }
     form {
       display: flex;
       flex-direction: column;
       gap: 8px;
     }
-    select, input[type="text"], input[type="file"], button {
+    select, input, button {
       padding: 12px;
       border-radius: 8px;
       border: 1px solid #ccc;
@@ -113,110 +101,69 @@
 
   <div id="chat"></div>
 
-  <form id="chatForm" onsubmit="sendMessage(); return false;">
+  <form onsubmit="sendMessage(); return false;">
     <select id="sender">
       <option value="oscar">Oscar</option>
       <option value="alice">Alice</option>
     </select>
 
     <input type="text" id="messageInput" placeholder="메시지를 입력하세요..." autocomplete="off" />
-    <input type="file" id="imageInput" accept="image/*" />
-
     <button type="submit">보내기</button>
   </form>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <script>
     const supabaseUrl = 'https://qiybdrzxcxxgvibuaruu.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpeWJkcnp4Y3h4Z3ZpYnVhcnV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIzNTk4NTcsImV4cCI6MjA2NzkzNTg1N30.3qJ9t3VQ-FIElslsu0R5up4EbHMJJLXJh_1TxZqeflI';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpeWJkcnp4Y3h4Z3ZpYnVhcnV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIzNTk4NTcsImV4cCI6MjA2NzkzNTg1N30.3qJ9t3VQ-FIElslsu0R5up4EbHMJJLXJh_1TxZqeflI'; // 👈 실제 anon 키로 교체
     const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
     const chatBox = document.getElementById('chat');
     const senderInput = document.getElementById('sender');
     const messageInput = document.getElementById('messageInput');
-    const imageInput = document.getElementById('imageInput');
 
-    // 아바타 Base64 (예시)
-    const avatarMap = {
-      oscar: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABU0lEQVRYR+3XzQnCQBAG4F9vAQh2FOw8CnLgplMlFkWbAicYewdQ0hRaRMQTOwYFbBx7OMWv/RQmNcD8+2l5rxpHv/1ScHw0z9Xcr3+09K3e/2AEEkN5O4jx27HcH+bvXcxCuA/EhKefwS2hUpLnMK6JhRpRp45DbDLIJ8nJGLNggphhSx+X8xBgCJ0F5m80lfM0KSlNl6V1c3wDa7YkoXCAJygToTvMYgS2GFeBeXwlADd47EE0Z9vgnRS3CJ6jl7KwImBP9G0eGddQlKUp3vD2XvD12EpbzWFD0nXc14RQFtH6el/PlE2W5Mx8dBqkgJeqLYhKIyZT9T4KccCRG2j88pZFb8BaxnkIAAAAASUVORK5CYII=",
-      alice: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABVklEQVRYR+3X0Q2CMBCF4R+QAooWqMqVkN6CDZT2hZoDccQDeCBmEwVkMItIuEhGJHOaFH3/xq64ndb2xJpHyYvN/JjP39vLCmAJ4I56IgA9bUJWdMZBzg4DnjGcC1VLNX7pg2sZsIcCxBcNBr1drkA+IuFay+hSkE6Al9DNYHpETrFIJoJyZo0DhMwL2pCJCn+7ADs6MFfLrMWG2cGqV17vRJUhRuI3kEIgWxkij3QDCHv54JhKkA8jyX7LAz1fV8+PucxP2h9wEC70ML43YdArF5DPJPzVwXBFObPR1J+RWFRQktR08PpqCt6pMmpvSHKkJWFCeMZKV43A6r9AT6Pk6IhLLAAAAAElFTkSuQmCC"
-    };
-
-    let imageBase64 = null;
-
-    imageInput.addEventListener('change', () => {
-      const file = imageInput.files[0];
-      if (!file) {
-        imageBase64 = null;
+    // 알림 권한 요청
+    async function requestNotificationPermission() {
+      if (!('Notification' in window)) {
+        alert('이 브라우저는 알림을 지원하지 않습니다.');
         return;
       }
-      const reader = new FileReader();
-      reader.onload = () => {
-        imageBase64 = reader.result; // data:image/...;base64,...
-      };
-      reader.readAsDataURL(file);
-    });
+
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        alert('알림이 꺼져 있어요. 설정에서 허용해주세요.');
+      }
+    }
+
+    // 알림 표시
+    function displayBrowserNotification(message) {
+      if (Notification.permission === 'granted') {
+        new Notification(`📩 ${message.sender}`, {
+          body: message.content,
+          icon: 'https://cdn-icons-png.flaticon.com/512/2583/2583279.png',
+        });
+      }
+    }
 
     async function sendMessage() {
       const sender = senderInput.value;
       const content = messageInput.value.trim();
-
-      if (!content && !imageBase64) {
-        alert('메시지 또는 이미지를 입력해주세요!');
-        return;
-      }
-
-      const messagePayload = {
-        sender,
-        content,
-        image: imageBase64
-      };
+      if (!content) return;
 
       const { error } = await supabaseClient
         .from('messages')
-        .insert([messagePayload]);
+        .insert([{ sender, content }]);
 
       if (error) {
         alert('메시지 전송 실패: ' + error.message);
       } else {
         messageInput.value = '';
-        imageInput.value = null;
-        imageBase64 = null;
       }
     }
 
     function displayMessage(message) {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'msg-wrapper ' + message.sender.toLowerCase();
-
-      const avatar = document.createElement('img');
-      avatar.src = avatarMap[message.sender.toLowerCase()] || '';
-      avatar.alt = message.sender;
-      avatar.className = 'avatar';
-
       const msgDiv = document.createElement('div');
       msgDiv.className = 'msg ' + message.sender.toLowerCase();
-
-      if (message.content && message.image) {
-        const textNode = document.createElement('p');
-        textNode.textContent = message.content;
-        const imgNode = document.createElement('img');
-        imgNode.src = message.image;
-
-        msgDiv.appendChild(textNode);
-        msgDiv.appendChild(imgNode);
-      } else if (message.image) {
-        const imgNode = document.createElement('img');
-        imgNode.src = message.image;
-
-        msgDiv.appendChild(imgNode);
-      } else {
-        msgDiv.textContent = message.content;
-      }
-
-      wrapper.appendChild(avatar);
-      wrapper.appendChild(msgDiv);
-      chatBox.appendChild(wrapper);
+      msgDiv.textContent = `[${message.sender}] ${message.content}`;
+      chatBox.appendChild(msgDiv);
       chatBox.scrollTop = chatBox.scrollHeight;
     }
 
@@ -252,32 +199,12 @@
         .subscribe();
     }
 
-    // 알림 요청 및 표시
-    async function requestNotificationPermission() {
-      if (!('Notification' in window)) {
-        alert('이 브라우저는 알림을 지원하지 않습니다.');
-        return;
-      }
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') {
-        alert('알림이 꺼져 있어요. 설정에서 허용해주세요.');
-      }
-    }
-    function displayBrowserNotification(message) {
-      if (Notification.permission === 'granted') {
-        new Notification(`📩 ${message.sender}`, {
-          body: message.content || '이미지 메시지',
-          icon: avatarMap[message.sender.toLowerCase()] || ''
-        });
-      }
-    }
-
+    // 초기 실행
     window.onload = () => {
       requestNotificationPermission();
       loadMessages();
       listenForMessages();
     };
   </script>
-
 </body>
 </html>
